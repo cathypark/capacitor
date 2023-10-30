@@ -1,6 +1,7 @@
 import { readFile, writeFile } from '@ionic/utils-fs';
 import { execSync } from 'child_process';
 import { resolve } from 'path';
+import { major } from 'semver';
 
 import c from '../colors';
 import { checkCapacitorPlatform } from '../common';
@@ -11,7 +12,6 @@ import { logger } from '../log';
 import { PluginType, getPluginPlatform } from '../plugin';
 import type { Plugin } from '../plugin';
 import { isInstalled, runCommand } from '../util/subprocess';
-import { major } from 'semver';
 
 export async function checkIOSPackage(config: Config): Promise<string | null> {
   return checkCapacitorPlatform(config, 'ios');
@@ -59,29 +59,30 @@ export async function checkCocoaPods(config: Config): Promise<string | null> {
 }
 
 export async function checkSPMVersion(config: Config): Promise<string | null> {
-    if (config.cli.os !== OS.Mac) {
-      return "Swift package manager cannot be user or installed on anything but macOS"
-    }
+  if (config.cli.os !== OS.Mac) {
+    return 'Swift package manager cannot be user or installed on anything but macOS';
+  }
 
-    const spmVersionString = await runCommand('swift', ['package', '--version']);
-    const versionRegex = RegExp(/([0-9]+)\.?([0-9]*)\.?([0-9]*)/);
-    const versionMatch = versionRegex.exec(spmVersionString);
+  const spmVersionString = await runCommand('swift', ['package', '--version']);
+  const versionRegex = RegExp(/([0-9]+)\.?([0-9]*)\.?([0-9]*)/);
+  const versionMatch = versionRegex.exec(spmVersionString);
 
-    if (versionMatch === null) {
-      return "Swift package manager was not found"
-    }
+  if (versionMatch === null) {
+    return 'Swift package manager was not found';
+  }
 
-    const majorVersionNumber = parseInt(versionMatch[1]);
-    const minorVersionNumber = parseInt(versionMatch[2]);
+  const majorVersionNumber = parseInt(versionMatch[1]);
+  const minorVersionNumber = parseInt(versionMatch[2]);
 
+  if (
+    majorVersionNumber < 5 ||
+    (majorVersionNumber == 5 && minorVersionNumber < 9)
+  ) {
+    return `Swift 5.9 is required, you have Swift version ${versionMatch}`;
+  }
 
-    if (majorVersionNumber < 5 || majorVersionNumber == 5 && minorVersionNumber < 9) {
-      return `Swift 5.9 is required, you have Swift version ${versionMatch}`
-    }
-
-    return null
+  return null;
 }
-
 
 export async function getIOSPlugins(allPlugins: Plugin[]): Promise<Plugin[]> {
   const resolved = await Promise.all(
